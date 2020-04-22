@@ -30,7 +30,8 @@ Imports:
     testthat,
     tidyr,
     vctrs,
-    zeallot
+    zeallot,
+    pryr
 Remotes: 
     hadley/emo,
     r-lib/rlang,
