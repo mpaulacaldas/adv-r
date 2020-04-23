@@ -268,7 +268,7 @@ You _can_ also create non-syntactic bindings using single or double quotes (e.g.
 1.  I slightly simplified the rules that govern syntactic names. Why is `.123e1`
     not a syntactic name? Read `?make.names` for the full details.
     ::: answer
-    `.123e1` is not a syntatically valid name because it starts with a dot and is followed by the number.
+    `.123e1` is not a syntactically valid name because it starts with a dot and is followed by the number.
     :::
 
 ## Copy-on-modify
@@ -686,7 +686,7 @@ obj_size(1:1e9)
     
     When the second element of the list is modified, a new copy is created, which (almost) doubles the size of `b`. This makse sense since the list is now made up of two different vectors.
     
-    When the first element of the list is modified, the size of `b` remains the same as the previous step. Although the two elements of the vector are back to being the same, R doesn't recognise them as a shared value. This also explains why in total, `a` and `b` have the size of three distict values.
+    When the first element of the list is modified, the size of `b` remains the same as the previous step. Although the two elements of the vector are back to being the same, R doesn't recognise them as a shared value. This also explains why in total, `a` and `b` have the size of three distinct values.
     ```{r, ref.label = "ab-sizes"}
     ```
     :::
@@ -879,7 +879,7 @@ This is a unique property of environments!
     performance change as the number of columns increase?
     
     ::: answer
-    In the code below, I create three functions: one that generates random data from a given number of colums and two that implement the median substraction. Note that I also make sure that both median functions output a `data.frame` object. 
+    In the code below, I create three functions: one that generates random data from a given number of columns and two that implement the median subtraction. Note that I also make sure that both median functions output a `data.frame` object. 
     ```{r, error = TRUE}
     generate_data <- function(ncol) {
       data.frame(matrix(runif(ncol * 1e4), ncol = ncol))
