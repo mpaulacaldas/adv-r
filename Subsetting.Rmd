@@ -27,15 +27,81 @@ Take this short quiz to determine if you need to read this chapter. If the answe
 
 1.  What is the result of subsetting a vector with positive integers, 
     negative integers, a logical vector, or a character vector?
+    
+    ::: answer
+    Positive integers extract the value, negative integers remove the value.
+    ```{r}
+    letters[1]
+    letters[-c(1:15)]
+    ```
+    
+    Subsetting with logical vectors will retun the elements marked with `TRUE`.
+    
+    ```{r}
+    x <- 1:3
+    x[c(TRUE, FALSE, TRUE)]
+    ```
+    
+    Subsetting with character vectors is possible if the vector is named.
+    
+    ```{r}
+    x <- c(a = 1, b = 2, c = 3)
+    x[c("a", "b")]
+    ```
+    :::
 
 1.  What's the difference between `[`, `[[`, and `$` when applied to a list?
+    
+    ::: answer
+    `[` returns a list, `$` and `[[` return the element.
+    
+    ```{r}
+    l <- list(x = 1:3, y = c("a", "b"))
+    
+    l["y"]
+    l$y
+    l[["y"]]
+    ```
+    :::
 
 1.  When should you use `drop = FALSE`?
 
+    ::: answer
+    You should use it to avoid type conversion in data frames.
+    
+    ```{r}
+    df <- data.frame(x = 1:3, y = 3:1)
+    df[, "x"]
+    df[, "x", drop = FALSE]
+    ```
+    :::
+
 1.  If `x` is a matrix, what does `x[] <- 0` do? How is it different from
     `x <- 0`?
+    
+    ::: answer
+    `x[] <- 0` will populate the entire matrix with zeroes. `x <- 0` will change the binding of `x` from a matrix to a numeric vector.
+    ```{r}
+    (x <- matrix(nrow = 2, ncol = 2))
+    x[] <- 0
+    x
+    
+    x <- 0
+    x
+    ```
+    :::
 
 1.  How can you use a named vector to relabel categorical variables?
+    
+    ::: answer
+    This is how I would do it, but there must be other ways.
+    ```{r}
+    y   <- letters[1:5]
+    new <- c("a" = "apple", "b" = "banana", "c" = "carrot")
+    
+    dplyr::recode(y, !!!new)
+    ```
+    :::
 
 ### Outline {-}
 

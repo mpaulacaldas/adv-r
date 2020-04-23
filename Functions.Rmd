@@ -15,6 +15,10 @@ If you're reading this book, you've probably already created many R functions an
 Answer the following questions to see if you can safely skip this chapter. You can find the answers in Section \@ref(function-answers).
 
 1.  What are the three components of a function?
+    
+    ::: answer
+    Name, body, arguments?
+    :::
 
 1.  What does the following code return?
 
@@ -28,17 +32,33 @@ Answer the following questions to see if you can safely skip this chapter. You c
     f1(1)()
     ```
     
+    ::: answer
+    11
+    :::
+    
 1.  How would you usually write this code?
 
     ```{r, eval = FALSE}
     `+`(1, `*`(2, 3))
     ```
     
+    ::: answer
+    ```{r, eval = FALSE}
+    1 + (2 * 3)
+    ```
+    :::
+    
 1.  How could you make this call easier to read?
 
     ```{r, eval = FALSE}
     mean(, TRUE, x = c(1:10, NA))
     ```
+    
+    ::: answer
+    ```{r, eval = FALSE}
+    mean(c(1:10, NA), na.rm = TRUE)
+    ```
+    :::
 
 1.  Does the following code throw an error when executed? Why or why not?
 
@@ -48,12 +68,24 @@ Answer the following questions to see if you can safely skip this chapter. You c
     }
     f2(10, stop("This is an error!"))
     ```
+    
+    ::: answer
+    It doesn't throw an error because `b` is never called in the body of the function.
+    :::
 
 1.  What is an infix function? How do you write it? What's a replacement 
     function? How do you write it?
+    
+    ::: answer
+    TODO
+    :::
 
 1.  How do you ensure that cleanup action occurs regardless of how a function 
     exits?
+    
+    ::: answer
+    TODO
+    :::
 
 ### Outline {-}
 

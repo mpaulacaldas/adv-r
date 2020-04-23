@@ -16,14 +16,30 @@ Want to skip this chapter? Go for it, if you can answer the questions below. Fin
 
 *   What is the difference between `if` and `ifelse()`?
 
+    ::: answer
+    `ifelse()` is vectorised, `if` isn't.
+    
+    `if` will execute code if the *first* element of the vector provided to it is `TRUE`, and will give a warning if the length of the vector it receives is greater than 1.
+    
+    `ifelse()` will look at each element of a logical vector to determine which expression to execute at each position.
+    :::
+
 *   In the following code, what will the value of `y` be if `x` is `TRUE`?
     What if `x` is `FALSE`? What if `x` is `NA`?
   
     ```{r, eval = FALSE}
     y <- if (x) 3
     ```
+    
+    ::: answer
+    If `x` is `TRUE`, then `y` will take the value of `3`. If `NA`, the code will return an error. If `FALSE`, `y` will be `NULL`.
+    :::
 
 *   What does `switch("x", x = , y = 2, z = 3)` return?
+    
+    ::: answer
+    It returns `2`.
+    :::
 
 ### Outline {-}
 
