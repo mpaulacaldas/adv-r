@@ -35,7 +35,7 @@ Take this short quiz to determine if you need to read this chapter. If the answe
     letters[-c(1:15)]
     ```
     
-    Subsetting with logical vectors will retun the elements marked with `TRUE`.
+    Subsetting with logical vectors will return the elements marked with `TRUE`.
     
     ```{r}
     x <- 1:3
@@ -273,6 +273,23 @@ vals
 vals[c(4, 15)]
 ```
 
+::: answer
+
+`r emo::ji("gem")` `outer()` creates a matrix with the product (or the result of `FUN`) of `X` and `Y`. 
+
+`%o%` is a wrapper for `outer(X, Y, "*")`.
+
+```{r}
+one_to_five <- 1:5
+
+# multiplication table
+one_to_five %o% one_to_five
+
+# power table
+outer(one_to_five, one_to_five, "^")
+```
+:::
+
 You can also subset higher-dimensional data structures with an integer matrix (or, if named, a character matrix). Each row in the matrix specifies the location of one value, and each column corresponds to a dimension in the array. This means that you can use a 2 column matrix to subset a matrix, a 3 column matrix to subset a 3D array, and so on. The result is a vector of values:
 
 ```{r}
@@ -341,6 +358,14 @@ By default, subsetting a matrix or data frame with a single number, a single nam
     
     str(a[1, , drop = FALSE])
     ```
+    
+    ::: answer
+    This is easier to see without `str()`.
+    ```{r}
+    a[1, ]
+    a[1, , drop = FALSE]
+    ```
+    :::
 
 *   Data frames with a single column will return just that column:
 
@@ -350,6 +375,13 @@ By default, subsetting a matrix or data frame with a single number, a single nam
 
     str(df[, "a", drop = FALSE])
     ```
+    
+    ::: answer
+    ```{r}
+    df[, "a"]
+    df[, "a", drop = FALSE]
+    ```
+    :::
 
 The default `drop = TRUE` behaviour is a common source of bugs in functions: you check your code with a data frame or matrix with multiple columns, and it works. Six months later, you (or someone else) uses it with a single column data frame and it fails with a mystifying error. When writing functions, get in the habit of always using `drop = FALSE` when subsetting a 2D object. For this reason, tibbles default to `drop = FALSE`, and `[` always returns another tibble.
 
@@ -371,6 +403,23 @@ z[1, drop = TRUE]
     mtcars[mtcars$cyl <= 5]
     mtcars[mtcars$cyl == 4 | 6, ]
     ```
+    
+    ::: answer
+    ```{r, eval = FALSE}
+    # missing =
+    mtcars[mtcars$cyl == 4, ]
+    
+    # missing c()
+    mtcars[-c(1:4), ]
+    
+    # missing ,
+    mtcars[mtcars$cyl <= 5, ]
+    
+    # improper use of conditionals
+    mtcars[mtcars$cyl == 4 | mtcars$cyl == 6, ] # good 
+    mtcars[mtcars$cyl %in% c(4, 6), ]           # better
+    ```
+    :::
 
 1.  Why does the following code yield five missing values? (Hint: why is 
     it different from `x[NA_real_]`?)
@@ -379,6 +428,16 @@ z[1, drop = TRUE]
     x <- 1:5
     x[NA]
     ```
+    
+    ::: answer
+    The reason is because logical vectors of size 1 are recycled, and `NA` is by default of type logical.
+    
+    There is no recycling with integer subsetting, which is why `NA_real_` returns only one missing value.
+    ```{r}
+    is.logical(NA)
+    x[NA_real_]
+    ```
+    :::
     
 1.  What does `upper.tri()` return? How does subsetting a matrix with it 
     work? Do we need any additional subsetting rules to describe its behaviour?
@@ -390,11 +449,58 @@ z[1, drop = TRUE]
 
 1.  Why does `mtcars[1:20]` return an error? How does it differ from the 
     similar `mtcars[1:20, ]`?
+    
+    ::: answer
+    
+    `mtcars[1:20]` is subsetting on the columns. It is equivalent to `mtcars[, 1:20]`. The expression returns an error because we are asking for more columns than the ones that are available in the data frame.
+    ```{r, error = TRUE}
+    mtcars[1:20]
+    ncol(mtcars)
+    ```
+    
+    `mtcars[1:20, ]` subsets on the rows of the data. When we ask for more rows that are available in the data, we get back a data frame with extra rows filled with `NA` values.
+    
+    ```{r}
+    tail(mtcars[1:35, ])
+    ```
+    :::
 
 1.  Implement your own function that extracts the diagonal entries from a
     matrix (it should behave like `diag(x)` where `x` is a matrix).
+    
+    ::: answer
+    ```{r}
+    mydiag <- function(m) {
+      stopifnot(is.matrix(m), nrow(m) == ncol(m))
+      
+      d <- vector("integer", nrow(m))
+      for (i in 1:nrow(m)) {
+        d[i] <- m[i, i]
+      }
+      d
+    }
+    
+    (dd <- matrix(1:16, nrow = 4))
+    
+    diag(dd)
+    mydiag(dd)
+    ```
+    :::
 
 1.  What does `df[is.na(df)] <- 0` do? How does it work?
+    
+    ::: answer
+    `df[is.na(df)] <- 0` replaces all missing values with zero. `is.na(df)` returns a logical matrix with `TRUE` for every entry with a missing value in `df`. Subsetting by this matrix allows us to conditionally replace the `NA` values with `0`.
+    
+    ```{r}
+    (air <- airquality[1:5, ])
+    
+    is.na(air)
+    
+    air[is.na(air)] <- 0
+    air
+    ```
+    :::
 
 ## Selecting a single element {#subset-single}
 \index{subsetting!lists} 
@@ -545,10 +651,40 @@ There are two additional subsetting operators, which are needed for S4 objects: 
 
 1.  Brainstorm as many ways as possible to extract the third value from the
     `cyl` variable in the `mtcars` dataset.
+    
+    ::: answer
+    ```{r}
+    # using the column name
+    mtcars[3, "cyl"]
+    mtcars["cyl"][3, ]
+    mtcars[["cyl"]][3]
+    mtcars$cyl[3]
+    mtcars[3, ]["cyl"][[1]]
+    mtcars[3, ][["cyl"]]
+    
+    # using the column index
+    mtcars[3, 2]
+    mtcars[, 2][3]
+    mtcars[[2]][3]
+    mtcars[3, ][2][[1]]
+    mtcars[3, ][[2]]
+    ```
+    :::
 
 1.  Given a linear model, e.g., `mod <- lm(mpg ~ wt, data = mtcars)`, extract
     the residual degrees of freedom. Then extract the R squared from the model
     summary (`summary(mod)`)
+    
+    ::: answer
+    ```{r}
+    mod <- lm(mpg ~ wt, data = mtcars)
+    names(mod)
+    mod$df.residual
+    
+    names(summary(mod))
+    summary(mod)[["r.squared"]]
+    ```
+    :::
 
 <!-- FIXME: more examples -->
 
@@ -593,6 +729,11 @@ is.data.frame(mtcars)
 rm(mtcars)
 ```
 
+```{r, include=FALSE}
+# Load back so that I can use it in my solutions
+mtcars <- datasets::mtcars
+```
+
 ## Applications {#applications}
 
 The principles described above have a wide variety of useful applications. Some of the most important are described below. While many of the basic principles of subsetting have already been incorporated into functions like `subset()`, `merge()`, `dplyr::arrange()`, a deeper understanding of how those principles have been implemented will be valuable when you run into situations where the functions you need don't exist.
@@ -613,6 +754,26 @@ Note that if you don't want names in the result, use `unname()` to remove them.
 ```{r}
 unname(lookup[x])
 ```
+
+::: answer
+`r emo::ji("gem")` This is a nice hack, that takes advantage of two behaviours of vector subsetting:
+
+- the returned vector will have the same order as `x`
+- new elements will be added to `lookup` if the indexing vector `x` contains duplicates
+
+I already showed my approach with `dplyr::recode()` in the quiz at the beginning. It isn't great for all situation because it takes a dependency on `dplyr` and uses the `!!!` operator, which still causes a lot of confusion. Wrapping Hadley's approach is a nice little alternative. Note however that unlike `dplyr::recode()`, the lookup table approach requires all the alternatives to be named in the lookup vector.
+
+```{r}
+recode2 <- function(x, lookup) { unname(lookup[x]) }
+
+frutas <- c("manzana", "fresa", "kiwi")
+fruits <- c("manzana" = "apple", "fresa" = "strawberry")
+
+recode2(frutas, fruits)
+dplyr::recode(frutas, !!!fruits)
+```
+
+:::
 
 ### Matching and merging by hand (integer subsetting) {#matching-merging}
 \index{matching and merging}
@@ -702,6 +863,21 @@ df[rep(1:nrow(df), df$n), ]
 ```
 
 
+::: answer
+`r emo::ji("gem")` This is also useful for dates.
+
+```{r}
+df <- data.frame(
+  start = as.Date(c("2000-01-01", "2000-02-01")), 
+  end   = as.Date(c("2000-01-03", "2000-02-04"))
+  )
+
+(diff <- df$end - df$start + 1)
+(idx <- rep(1:nrow(df), diff))
+df[idx, ]
+```
+:::
+
 ### Removing columns from data frames (character \mbox{subsetting})
 
 There are two ways to remove columns from a data frame. You can set individual columns to `NULL`: 
@@ -740,6 +916,10 @@ Remember to use the vector boolean operators `&` and `|`, not the short-circuiti
 
 * `!(X & Y)` is the same as `!X | !Y`
 * `!(X | Y)` is the same as `!X & !Y`
+
+::: answer
+Remember: invert the operator and distribute the negation.
+:::
 
 For example, `!(X & !(Y | Z))` simplifies to `!X | !!(Y|Z)`, and then to `!X | Y | Z`.
 
@@ -794,12 +974,26 @@ xor(x1, y1)
 setdiff(union(x2, y2), intersect(x2, y2))
 ```
 
+::: answer
+`r emo::ji("exploding_head")` `xor()`
+:::
+
 When first learning subsetting, a common mistake is to use `x[which(y)]` instead of `x[y]`. Here the `which()` achieves nothing: it switches from logical to integer subsetting but the result is exactly the same. In more general cases, there are two important differences. 
 
 * When the logical vector contains `NA`, logical subsetting replaces these 
   values with `NA` while `which()` simply drops these values. It's not uncommon 
   to use `which()` for this side-effect, but I don't recommend it: nothing 
   about the name "which" implies the removal of missing values.
+  
+  ::: answer
+  
+  People also use `%in%` for this side-effect, which seems just as wrong.
+  ```{r}
+  x <- c("a", NA, "b")
+  x[x == "a"]
+  x[x %in% "a"]
+  ```
+  :::
 
 * `x[-which(y)]` is __not__ equivalent to `x[!y]`: if `y` is all FALSE, 
   `which(y)` will be `integer(0)` and `-integer(0)` is still `integer(0)`, so
@@ -812,12 +1006,42 @@ In general, avoid switching from logical to integer subsetting unless you want, 
 1.  How would you randomly permute the columns of a data frame? (This is an
     important technique in random forests.) Can you simultaneously permute 
     the rows and columns in one step?
+    
+    ::: answer
+    ```{r}
+    df <- data.frame(x = 1:10, y = 10:1, z = letters[1:10])
+    df[sample(1:nrow(df)), sample(names(df))]
+    ```
+    :::
 
 1.  How would you select a random sample of `m` rows from a data frame? 
     What if the sample had to be contiguous (i.e., with an initial row, a 
     final row, and every row in between)?
     
+    ::: answer
+    Following the same approach as the [solutions manual](https://advanced-r-solutions.rbind.io/subsetting.html#applications):
+    
+    ```{r}
+    m <- 4
+    start <- sample(nrow(df) - m + 1, 1)
+    end   <- start + m - 1
+    
+    df[start:end, ]
+    ```
+    :::
+    
 1.  How could you put the columns in a data frame in alphabetical order?
+    
+    ::: answer
+    
+    ```{r}
+    (cars <- mtcars[1:5, ])
+    
+    cars[sort(names(cars))]
+    
+    cars[order(names(cars))]
+    ```
+    :::
 
 ## Quiz answers {#subsetting-answers}
 
