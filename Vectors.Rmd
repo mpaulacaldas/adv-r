@@ -70,7 +70,7 @@ Take this short quiz to determine if you need to read this chapter. If the answe
    
    ::: answer
    - Lists can contain elements of different types, atomic vectors require all element to be of the same type.
-   - TODO
+   - All elements of a matrix need to be of the same type.
    :::
 
 1. Can you have a list that is a matrix? Can a data frame have a column 
