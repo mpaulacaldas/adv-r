@@ -191,6 +191,10 @@ x_option <- function(x) {
 }
 ```
 
+::: answer
+`r emo::ji("point_down")` Good tip
+:::
+
 The last component of a `switch()` should always throw an error, otherwise unmatched inputs will invisibly return `NULL`:
 
 ```{r}
@@ -229,6 +233,33 @@ It is also possible to use `switch()` with a numeric `x`, but is harder to read,
     ```
 
     Read the documentation and write down the rules in your own words.
+    
+    ::: answer
+    The documentation says:
+    
+    > The mode of the answer will be coerced from logical to accommodate first any values taken from `yes` and then any values taken from `no`.
+    
+    This explains the output of the first two expressions. In the first one, since all values in `test` are `TRUE`, only the `yes` value will be used to determine the type of the output. The same logic applies to the second expression.
+    
+    ```{r}
+    ifelse(TRUE, 1, "no")
+    ifelse(FALSE, 1, "no")
+    ```
+    
+    Note that with a longer vector, the output would be coerced to character to accommodate the values taken from `yes` and `no`.
+    
+    ```{r}
+    ifelse(c(TRUE, FALSE), 1, "no")
+    ```
+    
+    Finally, for missing values, the documentation says:
+    
+    > Missing values in `test` give missing values in the result.
+    
+    ```{r}
+    ifelse(NA, 1, "no")
+    ```
+    :::
 
 1.  Why does the following code work?
 
@@ -239,6 +270,21 @@ It is also possible to use `switch()` with a numeric `x`, but is harder to read,
     x <- numeric()
     if (length(x)) "not empty" else "empty"
     ```
+    
+    ::: answer
+    The first expression works because `if` uses only the first value of `x`, i.e. `1`, which is equivalent to `TRUE`.
+    
+    ```{r}
+    TRUE == 1
+    ```
+    
+    The second piece of code works because the length of an empty vector is `0`, which is equivalent to `FALSE`.
+    
+    ```{r}
+    length(numeric())
+    FALSE == 0
+    ```
+    :::
 
 ## Loops
 \index{loops}
@@ -373,6 +419,20 @@ Generally speaking you shouldn't need to use `for` loops for data analysis tasks
     }
     out
     ```
+    
+    ::: answer
+    The reason is because of vector subsetting. `x[1]` return `NA`, even though `x` is an empty list. If we want the code to break loudly, we should use `[[`.
+    
+    ```{r, error = TRUE}
+    x <- numeric()
+    out <- vector("list", length(x))
+    for (i in 1:length(x)) {
+      out[i] <- x[[i]] ^ 2
+    }
+    ```
+    
+    Note that this code also suffers from the second common pitfall described above: iterating over `1:length(x)`.
+    :::
 
 1.  When the following code is evaluated, what can you say about the 
     vector being iterated?
@@ -384,6 +444,19 @@ Generally speaking you shouldn't need to use `for` loops for data analysis tasks
     }
     xs
     ```
+    
+    ::: answer
+    This is not memory efficient because we are creating a new copy with each iteration. It would be better to create an output vector of the correct size from the get-go.
+    
+    ```{r}
+    xs <- c(1, 2, 3)
+    out <- c(xs, vector("double", length(x)))
+    for (x in xs) {
+      out[3 + x] <- x * 2
+    }
+    out
+    ```
+    :::
 
 1.  What does the following code tell you about when the index is updated?
 
@@ -393,6 +466,10 @@ Generally speaking you shouldn't need to use `for` loops for data analysis tasks
       print(i) 
     }
     ```
+    
+    ::: answer
+    This tells me that the index cannot be updated from inside the body of the loop. At the end of the first iteration, the value of `i` was set to `4`. However, when the loop moved on to the next iteration, `i` did not start at `4` but at `2`, the second value that was defined at the beginning of the `for` clause.
+    :::
 
 ## Quiz answers {#control-flow-answers}
 
