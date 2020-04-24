@@ -17,7 +17,7 @@ Answer the following questions to see if you can safely skip this chapter. You c
 1.  What are the three components of a function?
     
     ::: answer
-    Name, body, arguments?
+    Arguments, body and environment.
     :::
 
 1.  What does the following code return?
@@ -77,14 +77,44 @@ Answer the following questions to see if you can safely skip this chapter. You c
     function? How do you write it?
     
     ::: answer
-    TODO
+    An infix function is one where the function name usually comes in between its arguments, like `+`, `%/%` or `%>%`. 
+    
+    ```{r}
+    `%uwu%` <- function(x, y) paste(x, "~(^.^)~", y)
+    "a" %uwu% "b"
+    ```
+    
+    A replacement function replaces the values by assignment, like `names(df) <- c("a", "b")`. They must have arguments named `x` and `value`, and must return the modified object. Any additional arguments need to be placed between `x` and `value`.
+        
+    ```{r}
+    `capitalise<-` <- function(x, position, value) {
+      x[position] <- toupper(value)
+      x
+    }
+    
+    x <- c("one", "two", "three")
+    capitalise(x, 2) <- "dos"
+    x
+    ```
     :::
 
 1.  How do you ensure that cleanup action occurs regardless of how a function 
     exits?
     
     ::: answer
-    TODO
+    Use `on.exit()`.
+    
+    ```{r, error = TRUE}
+    foo <- function(error) {
+      on.exit(message("Cleanup"), add = TRUE)
+      if (error) stop("Error!")
+      "All good!"
+    }
+    
+    foo(TRUE)
+    foo(FALSE)
+    ```
+    
     :::
 
 ### Outline {-}
@@ -253,28 +283,88 @@ You can instead use `do.call()`: it has two arguments. The function to call, and
 do.call(mean, args)
 ```
 
+::: answer
+`r emo::ji("rainbow")` **Alternatives**
+
+The same thing can be achieved with the (now retired) `invoke()` function from the **purrr** package.
+
+```{r}
+purrr::invoke(mean, args)
+```
+
+The tidyverse team now recommends using `rlang::exec()`. Note that `exec()` requires splicing the list of arguments with `!!!`.
+
+```{r}
+rlang::exec(mean, !!!args)
+```
+
+Overall, I think `do.call()` may be the way to go for most situations.
+:::
+
 We'll come back to this idea in Section \@ref(tidy-dots).
 
 ### Exercises
 
 1. Given a name, like `"mean"`, `match.fun()` lets you find a function. 
    Given a function, can you find its name? Why doesn't that make sense in R?
+   
+   ::: answer
+   Functions are objects, and as discussed in Chapter \@ref(names-values), an object can be bound to one or many names. This makes it more difficult to find the names associated with a given function. Moreover, as the example below shows, there are limitations to the way that R keeps track of objects. Although `f1`, `f2` and `f3` represent the same function, `f3` is not recognised as the same object because it was created via a separate function call. 
+   
+   ```{r}
+   library(lobstr)
+   
+   f1 <- function(x) { x * x }
+   obj_addr(f1)
+   
+   f2 <- f1
+   obj_addr(f2)
+   
+   f3 <- function(x) { x * x }
+   obj_addr(f3)
+   ```
+   :::
 
 1.  It's possible (although typically not useful) to call an anonymous function.
     Which of the two approaches below is correct? Why?
 
-    ```{r, result = "hide"}
+    ```{r anonymous-fun, result = "hide"}
     function(x) 3()
     (function(x) 3)()
     ```
+    
+    ::: answer
+    The second approach is correct. This is because parentheses return their contents (see `?Paren`). Therefore, in the second expression, the first set of parentheses serve to call the anonymous function, and the second set correspond to the arguments that are being provided to said function.
+    
+    ```{r, ref.label = "anonymous-fun"}
+    ```
+    
+    The same trick works with other types of functions.
+    
+    ```{r}
+    (mean)
+    
+    (mean)(c(1:5, NA), na.rm = TRUE)
+    ```
+    :::
 
 1. A good rule of thumb is that an anonymous function should fit on one line 
    and shouldn't need to use `{}`. Review your code. Where could you have 
    used an anonymous function instead of a named function? Where should you 
    have used a named function instead of an anonymous function?
-
+   
 1.  What function allows you to tell if an object is a function? What function
     allows you to tell if a function is a primitive function?
+    
+    ::: answer
+    ```{r}
+    is.function(f1)
+    is.function(sum)
+    
+    is.primitive(f1)
+    is.primitive(sum)
+    ```
+    :::
 
 1.  This code makes a list of all functions in the base package. 
     
@@ -287,14 +377,61 @@ We'll come back to this idea in Section \@ref(tidy-dots).
 
     a. Which base function has the most arguments?
     
+       ::: answer
+       ```{r, warnings = FALSE, messages = FALSE}
+       library(purrr)
+       
+       n_args <- funs %>% 
+         map(formals) %>% 
+         map_int(length) 
+         
+       n_args[n_args == max(n_args)]
+       ```
+       :::
+    
     a. How many base functions have no arguments? What's special about those
        functions?
        
+       ::: answer
+       ```{r}
+       sum(n_args == 0)
+       ```
+       
+       Most of these are primitive functions.
+       
+       ```{r}
+       zero_args <- names(n_args[n_args == 0])
+       
+       funs[zero_args] %>% 
+         keep(is.primitive) %>% 
+         length()
+       ```
+       :::
+       
     a. How could you adapt the code to find all primitive functions?
+    
+       ::: answer
+       Here is an alternative to `Filter()`.
+       ```{r}
+       pri <- keep(funs, is.primitive)
+       ```
+       :::
 
 1. What are the three important components of a function?
 
+   ::: answer
+   Arguments (or formals), body and environment.
+   :::
+
 1. When does printing a function not show the environment it was created in?
+   
+   ::: answer
+   When we use `body()`.
+   ```{r}
+   mean
+   body(mean)
+   ```
+   :::
   
 ## Function composition {#function-composition}
 \index{functions!composition}
@@ -527,18 +664,40 @@ The problem and its solution reveal why this seemingly undesirable behaviour exi
 
 1. What does the following code return? Why? Describe how each of the three
    `c`'s is interpreted.
-
-    ```{r, eval = FALSE}
+   
+    ```{r c-10, eval = FALSE}
     c <- 10
     c(c = c)
     ```
+    
+   ::: answer
+   
+   In the second line, the first `c` calls the combine function `c()`, the second `c` acts as a vector name, and the third `c` refers to the object that was created in the first line.
+   
+   ```{r, ref.label = "c-10"}
+   ```
+   :::
 
 1. What are the four principles that govern how R looks for values?
+   
+   ::: answer
+   
+   - __Name masking:__ Names inside a function mask names defined outside a function.
+   
+   - __Functions versus variables:__ If you are using a name in a context where it’s obvious that you want a function (e.g., `f(3)`), R will ignore objects that are not functions while it is searching.
+     
+     (I got that phrase from the [first edition](http://adv-r.had.co.nz/Functions.html#functions-vs-variables) of the book.)
+     
+   - __A fresh start:__ A new environment is created every time a function is called.
+   
+   - __Dynamic lookup:__ R looks for values when the function is run, not when the function is created.
+   
+   :::
 
 1. What does the following function return? Make a prediction before 
    running the code yourself.
 
-    ```{r, results = "hide"}
+    ```{r fff, results = "hide"}
     f <- function(x) {
       f <- function(x) {
         f <- function() {
@@ -550,6 +709,11 @@ The problem and its solution reveal why this seemingly undesirable behaviour exi
     }
     f(10)
     ```
+    
+   ::: answer
+   ```{r, ref.label = "fff", echo = FALSE}
+   ```
+   :::
 
 ## Lazy evaluation {#lazy-evaluation}
 \index{evaluation!lazy|see {lazy evaluation}} 
@@ -705,6 +869,10 @@ sample <- function(x, size = NULL, replace = FALSE, prob = NULL) {
 }
 ```
 
+::: answer
+This binary operator is also exported by __rlang__. It is very useful for Shiny apps.
+:::
+
 Because of lazy evaluation, you don't need to worry about unnecessary computation: the right side of `%||%` will only be evaluated if the left side is `NULL`.
 
 ### Exercises
@@ -720,6 +888,18 @@ Because of lazy evaluation, you don't need to worry about unnecessary computatio
     x_ok(1)
     x_ok(1:3)
     ```
+    
+    ::: answer
+    With `&&`, evaluation proceeds only until the result is determined, whereas `&` will evaluate the entire expression before giving back a result.
+    
+    For example, when we evaluate `x_ok(NULL)`, `!is.null(NULL)` will return `FALSE`. R will not bother executing any of the other conditions because, in theory, the intersect of any condition with `FALSE` should yield `FALSE`. In other words, `&&` breaks execution early.
+    
+    If we had used `&` instead of `&&` in the body of the function, `x_ok(NULL)` would return an empty logical vector. This is because R will evaluate each element of the condition before determining the output. This yields the following condition:
+    
+    ```{r}
+    FALSE & FALSE & logical(0)
+    ```
+    :::
 
     What is different with this code? Why is this behaviour undesirable here?
     
@@ -733,19 +913,38 @@ Because of lazy evaluation, you don't need to worry about unnecessary computatio
     x_ok(1:3)
     ```
     
+    ::: answer
+    The `x_ok(1:3)` is another great example of an error that could be prevented by an early exit with  `&&`. 
+    
+    The _order_ of the conditions in `x_ok()` gives us a hint as to the way that we intend the function to operate: if `x` is not null and only has one element, then check if said element is greater than `0`.
+    
+    The problem in the `x_ok(1:3)` scenerio is has to do with two of the default behaviours of `&`. First, execution continues even though the second condition results in `FALSE`. Second, the third condition returns a vector of length 3, that when compared against the other two via `&`, results in a vector of size 3 because of R's recycling rules.
+    
+    ```{r}
+    TRUE & FALSE & c(TRUE, TRUE, TRUE)
+    ```
+    :::
+    
 1.  What does this function return? Why? Which principle does it illustrate?
 
-    ```{r, results = "hide"}
+    ```{r f2, results = "hide"}
     f2 <- function(x = z) {
       z <- 100
       x
     }
     f2()
     ```
+    
+    ::: answer
+    ```{r, ref.label = "f2", echo = FALSE}
+    ```
+    
+    It illustrates the principle of lazy evaluation.
+    :::
 
 1.  What does this function return? Why? Which principle does it illustrate?
   
-    ```{r, results = "hide"}
+    ```{r f1, results = "hide"}
     y <- 10
     f1 <- function(x = {y <- 1; 2}, y = 0) {
       c(x, y)
@@ -753,6 +952,35 @@ Because of lazy evaluation, you don't need to worry about unnecessary computatio
     f1()
     y
     ```
+    
+    ::: answer
+    In the above example, `y` is set to `1` only in the function environment, and it overwrites the value provided in the second argument `y = 0` because in the body of the function `x` is evaluated first. This illustrates the principle of lazy evaluation.
+    
+    ```{r, ref.label = "f1"}
+    ```
+    
+    If we switch the order of evaluation of `x` and `y` in the body of the function, then the default `y` value is not overriden by the first line of code in the `x` argument.
+    
+    ```{r}
+    y <- 10
+    f1 <- function(x = {y <- 1; 2}, y = 0) {
+      rev(c(y, x))
+    }
+    f1()
+    y  
+    ```
+    
+    In both cases the value of `y` in the global environment remains the same. But as demonstrated before, note that this would not be the case if the assignment to `y` was made when _executing_ `f1()`. 
+    
+    ```{r}
+    y <- 10
+    f1 <- function(x = 2, y = 0) {
+      c(x, y)
+    }
+    f1(y = {y <- 1})
+    y
+    ```
+    :::
   
 1.  In `hist()`, the default value of `xlim` is `range(breaks)`, the default 
     value for `breaks` is `"Sturges"`, and
@@ -763,6 +991,44 @@ Because of lazy evaluation, you don't need to worry about unnecessary computatio
     
     Explain how `hist()` works to get a correct `xlim` value.
     
+    ::: answer
+    The source code of `hist()` can be accessed with `hist.default` or `lookup::lookup(hist)`.
+    
+    `xlim` is passed to `plot()`, which requires `xlim` to be a numeric vector of two values. The code in `hist()` ensures that `xlim` has the correct format by first performing a set of transformations on `breaks`, and then relying on lazy evaluation of the `xlim = range(breaks)` argument to update the value of `xlim`.
+    
+    In particular, the transformation of the default value of `breaks`, `"Sturges"`, to a numeric vector happens at this point of the code:
+        
+    ```{r, eval = FALSE}
+    if (is.character(breaks)) {
+      breaks <- match.arg(tolower(breaks), c("sturges", 
+        "fd", "freedman-diaconis", "scott"))
+      breaks <- switch(breaks, sturges = nclass.Sturges(x), 
+        `freedman-diaconis` = , fd = nclass.FD(x), scott = nclass.scott(x), 
+        stop("unknown 'breaks' algorithm"))
+    }
+    ```
+    
+    First, `match.arg()` is used to transform `"Sturges"` to lower caps, and then `switch()` applies the `nclass.Sturges()` function to `breaks`, which returns a unique numeric value with the number of classes for a histogram.
+    
+    Later, `breaks` is transformed once again with `pretty()`, which computes a sequence of equally spaced "round" values which covers the range of values in `range(x)`. The desired number of intervals is set to the number of classes that were previously calculated by `nclass.Sturges(x)`.
+    
+    ```{r, eval = FALSE}
+    breaks <- pretty(range(x), n = breaks, min.n = 1)
+    ```
+    
+    Finally, the `plot()` function is evaluated. The function calls on `xlim`. Since `xlim` has not been used anywhere else in the body of the function, it will take the default value specified in the function arguments, i.e. `range(breaks)`. The value of `breaks` will be that which has been modified in the body of the function, and thus, `range(breaks)` will return a numeric vector with two values.
+    
+    ```{r, eval = FALSE}
+    if (plot) {
+      plot(r, freq = freq1, col = col, border = border, angle = angle, 
+        density = density, main = main, xlim = xlim, ylim = ylim, 
+        xlab = xlab, ylab = ylab, axes = axes, labels = labels, 
+        ...)
+      invisible(r)
+    }
+    ```
+    :::
+    
 1.  Explain why this function works. Why is it confusing?
 
     ```{r}
@@ -772,8 +1038,36 @@ Because of lazy evaluation, you don't need to worry about unnecessary computatio
     }
     show_time()
     ```
+    
+    ::: answer
+    It works because we overrite the `stop()` function in the body of `show_time()` *before* executing `x`. This way, when R looks for the value of `x` to execute `print(x)`, it will evaluate the newly created `stop()` function instead of `base::stop()`. Since the new `stop()` function "passes the dots", we can feed it any type of input without getting an error.
+    
+    ```{r}
+    show_time <- function(x = stop(x = 1:10, y = "HEY")) {
+      stop <- function(...) Sys.time()
+      print(x)
+    }
+    show_time()
+    ```
+    
+    The function is confusing because it will also change behaviour depending on the value of `x` that is provided.
+    
+    ```{r, error = TRUE}
+    show_time <- function(x = stop("Error!")) {
+      stop <- function(...) Sys.time()
+      print(x)
+    }
+    show_time()
+    show_time(1)
+    show_time(stop("Error!"))
+    ```
+    :::
 
 1.  How many arguments are required when calling `library()`?
+
+    ::: answer
+    None. When we call library with no arguments, it lists all available packages in the library specified by `lib.loc`. Although `lib.loc = NULL` in the default arguments of `library()`, it calls on `.libPaths()` in the function body.
+    :::
 
 ## `...`  (dot-dot-dot) {#fun-dot-dot-dot}
 \indexc{...}
@@ -869,6 +1163,36 @@ Using `...` comes with two downsides:
     sum(1, 2, 3, na.omit = TRUE)
     mean(1, 2, 3, na.omit = TRUE)
     ```
+    
+    ::: answer
+    `sum()` only takes `...` as an argument, whereas `mean()` calculates the mean of a vector `x` and uses `...` to pass arguments to or from other methods. Therefore, the first expression correctly returns the sum of `1`, `2` and `3`, whereas the second returns the value of the first argument, which is interpreted to be `x`, and the other two are silently passed to `...`.
+    
+    ```{r}
+    sum(1, 2, 3)
+    mean(1, 2, 3)
+    ```
+    
+    `mean()` is what I would call a _strictly_ vectorised function. `sum()` is more flexible since it can work with either vectors, pair-wise elements, or both.
+    
+    ```{r}
+    mean(1:3)
+    
+    sum(1, 2, 3)
+    sum(1:3)
+    sum(1:2, 3)
+    ```
+    
+    With `na.omit = TRUE`, both `sum()` and `mean()` pass the argument to `...`. Since `sum()` uses `...` to calculate the sum, `na.omit = TRUE` is interpreted as a named logical vector that `sum()` coerces to `1` to carry out the computation. `mean()` on the other hand, uses `...` to pass _additional_ arguments, and therefore, `na.omit` is silently ignored.
+    
+    ```{r}
+    sum(1, 2, 3, na.omit = TRUE)
+    sum(1, 2, 3, TRUE)
+    sum(1, 2, 3, 1)
+    
+    mean(1, 2, 3, na.omit = TRUE)
+    mean(1)
+    ```
+    :::
 
 1.  Explain how to find the documentation for the named arguments in the 
     following function call:
@@ -877,8 +1201,18 @@ Using `...` comes with two downsides:
     plot(1:10, col = "red", pch = 20, xlab = "x", col.lab = "blue")
     ```
     
+    ::: answer
+    The documentation for all of the arguments can be found in `?plot.default`. This is a dedicated documentation page for the default scatterplot function. Note that it is different than the page of `?plot`, which gives a more generic overview of the `plot()` method.
+    :::
+    
 1.  Why does `plot(1:10, col = "red")` only colour the points, not the axes 
     or labels? Read the source code of `plot.default()` to find out.
+    
+    ::: answer
+    The color of the label and axes are defined by `col.lab` and `col.axis`. This information can be found in `?par`.
+    
+    The reason why `col` won't affect the axes or labels is because when passed to `title()` via the `...` argument, `title()` won't do partial matching of `col` to the graphical parameters from `par` that start with `col`, like `col.lab` or `col.axis`. This is explained in `?title`. The points of the scatter plot _will_ get colored because these are created by `box()`, which accepts `col`.
+    :::
 
 ## Exiting a function
 
@@ -1021,6 +1355,17 @@ cleanup <- function(dir, code) {
 }
 ```
 
+::: answer
+
+I was wondering why the first line in the body of the function was not
+
+```{r, eval = FALSE}
+  old_dir <- getwd(dir)
+```
+
+As it turns out, _`setwd()` returns the current directory before the change, invisibly and with the same conventions as `getwd()`._
+:::
+
 Coupled with lazy evaluation, this creates a very useful pattern for running a block of code in an altered environment:
 
 ```{r}
@@ -1063,14 +1408,48 @@ j09()
 
 1.  What does `load()` return? Why don't you normally see these values?
 
+    ::: answer
+    Load returns a character vector of the names of the objects created. This vector is returned invisibly, which is we we don't normally see it.
+    :::
+
 1.  What does `write.table()` return? What would be more useful?
+
+    ::: answer
+    `write.table()` silently returns `NULL`. It would be more useful for the function to return the data frame or matrix.
+    
+    ```{r}
+    with_dir(tempdir(), {
+      # example from ?write.table
+      x <- data.frame(a = I("a \" quote"), b = pi)
+      (write.table(x, file = "foo.csv", sep = ",", col.names = NA,
+                  qmethod = "double"))
+    })
+    ```
+    :::
 
 1.  How does the `chdir` parameter of `source()` compare to `with_dir()`? Why 
     might you prefer one to the other?
+    
+    ::: answer
+    According to the documentation, if `chdir` is _`TRUE` and `file` is a pathname, the R working directory is temporarily changed to the directory containing `file` for evaluating._
+    
+    This behaviour is more restrictive than `with_dir()`, because it requires the evaluation directory and the file directory to be the same. `source()` also requires a `file`, whereas we can provide code directly to `with_dir()`.
+    :::
 
 1.  Write a function that opens a graphics device, runs the supplied code, and 
     closes the graphics device (always, regardless of whether or not the 
     plotting code works).
+    
+    ::: answer
+    I have no idea if this is actually working code but let's assume it is.
+    ```{r, eval = FALSE}
+    plot_code <- function(code) {
+      on.exit(dev.off(), add = TRUE)
+      dev.new()
+      force(code)
+    }
+    ```
+    :::
 
 1.  We can use `on.exit()` to implement a simple version of `capture.output()`.
 
@@ -1091,6 +1470,73 @@ j09()
     Compare `capture.output()` to `capture.output2()`. How do the functions 
     differ? What features have I removed to make the key ideas easier to see? 
     How have I rewritten the key ideas so they're easier to understand?
+    
+    ::: answer
+    `capture.output()` has more arguments than `capture.output2()`. `file` is the file name or connection where the output will be returned, and `append` determines if the file contents should be overwritten or not. The last two arguments, `type` and `split`, are passed to `sink()`.
+    ```{r}
+    formalArgs(capture.output)
+    ```
+    
+    `capture.output2()` returns the output to a temporary file, which is always overwritten, therefore removing the need for `file` and `append`. It also doesn't handle connexions. This makes it possible to remove a number of checks at the beginning of the function body.
+    
+    ```{r, eval = FALSE}
+    rval <- NULL
+    closeit <- TRUE
+    if (is.null(file)) 
+      file <- textConnection("rval", "w", local = TRUE)
+    else if (is.character(file)) 
+      file <- file(file, if (append) 
+        "a"
+      else "w")
+    else if (inherits(file, "connection")) {
+      if (!isOpen(file)) 
+        open(file, if (append) 
+          "a"
+        else "w")
+      else closeit <- FALSE
+    }
+    else stop("'file' must be NULL, a character string or a connection")
+    ```
+    
+    The expressions to be evaluated in `capture.output()` are passed through `...`. `capture.output2()` accepts only one expression, and requires explicit printing.
+    
+    ```{r, error = TRUE}
+    capture.output(1+1, 2+2)
+    capture.output({1+1; 2+2})
+    
+    capture.output2(print(1+1), print(2+2))
+    capture.output2(print({1+1; 2+2}))
+    ```
+    
+    To evaluate the expressions in `...`, `capture.output()` uses a loop to evaluate each expression. It also uses `withVisible()` and `print()` to make sure that the output of the expressions are printed by default.
+    
+    ```{r, eval = FALSE}
+    args <- substitute(list(...))[-1L]
+    # blah, blah, blah
+    pf <- parent.frame()
+    evalVis <- function(expr) withVisible(eval(expr, pf))
+    for (i in seq_along(args)) {
+      expr <- args[[i]]
+      tmp <- switch(mode(expr), expression = lapply(expr, 
+        evalVis), call = , name = list(evalVis(expr)), stop("bad argument"))
+      for (item in tmp) if (item$visible) 
+        print(item$value)
+    }
+    ```
+    
+    Unlike what the [solutions manual](https://advanced-r-solutions.rbind.io/functions.html#exiting-a-function) states, `capture.output()` does not reimplement the `readLines()` method. If `file = NULL`, `capture.output()` writes the output to a variable called `rval`. After the output of the expressions have been evaluated, `capture.output()` returns `rval`, which is why we can see the output in the console. Note that if we were to explicitly provide a file path where to store the output, then `capture.output()` will return an invisible `NULL`.
+        
+    ```{r}
+    capture.output(1+1)
+    
+    tf <- tempfile()
+    (capture.output(1+1, file = tf))
+    readLines(tf)
+    ```
+    
+    `r emo::ji("question")` Why is the first `on.exit({...})` call overwritten by the second one in the body of `capture.output()`?
+    :::
+
     
 ## Function forms
 
@@ -1358,6 +1804,16 @@ All special forms are implemented as primitive functions (i.e. in C); this means
     
     if (length(x) <= 5) x[[5]] else x[[n]]
     ```
+    
+   ::: answer
+   ```{r, eval = FALSE}
+   `+`(`+`(1, 2), 3)
+   
+   `+`(1, `+`(2, 3))
+   
+   `if`(`<=`(length(x), 5), `[[`(x, 5), `[[`(x, n))
+   ```
+   :::
 
 1.  Clarify the following list of odd function calls:
 
@@ -1366,7 +1822,14 @@ All special forms are implemented as primitive functions (i.e. in C); this means
     y <- runif(min = 0, max = 1, 20)
     cor(m = "k", y = y, u = "p", x = x)
     ```
-
+    
+    ::: answer
+    ```{r, eval = FALSE}
+    x <- sample(c(1:10, NA), size = 20, replace = TRUE)
+    y <- runif(20, min = 0, max = 1)
+    cor(x, y, use = "pairwise.complete.obs", method = "kendall")
+    ```
+    :::
 
 1. Explain why the following code fails:
 
@@ -1374,8 +1837,46 @@ All special forms are implemented as primitive functions (i.e. in C); this means
     modify(get("x"), 1) <- 10
     #> Error: target of assignment expands to non-language object
     ```
+    
+   ::: answer
+   As [these](https://stackoverflow.com/a/27662163) [two](https://stackoverflow.com/a/14466283) StackOverflow answers explain, these errors occur when we try to assign a value to a variable that doesn't exist, or that R can treat as a name. 
+   
+   As explained before, the replacement function
+   ```{r, eval = FALSE}
+   modify(get("x"), 1) <- 10
+   ```
+   can be written in the following prefix form: 
+   ```{r, eval = FALSE}
+   get("x") <- `modify<-`(get("x"), 1, 10)
+   ```
+   The right-hand side of the expression is valid R code.
+   ```{r}
+   x <- 1
+   `modify<-`(get("x"), 1, 10)
+   ```
+   But the expression as a whole fails because we can't assign something to the result of a function.
+   ```{r, eval = FALSE}
+   get("x") <-  10
+   #> Error in get("x") <- 10 : 
+   #>  target of assignment expands to non-language object
+   ```
+   :::
 
 1. Create a replacement function that modifies a random location in a vector.
+
+   ::: answer
+   ```{r}
+   `rmodify<-` <- function(x, value) {
+     pos <- sample(seq_along(x), 1)
+     x[pos] <- value
+     x
+   }
+   
+   x <- 1:10
+   rmodify(x) <- 1000
+   x
+   ```
+   :::
 
 1. Write your own version of `+` that pastes its inputs together if they are 
    character vectors but behaves as usual otherwise. In other words, make this 
@@ -1388,17 +1889,92 @@ All special forms are implemented as primitive functions (i.e. in C); this means
     "a" + "b"
     #> [1] "ab"
     ```
+    
+   ::: answer
+   ```{r}
+   `+` <- function(x, y) {
+     if (is.character(x) && is.character(y)) return(paste0(x, y))
+     base::`+`(x, y)
+   }
+   
+   1 + 2
+   "a" + "b"
+   
+   rm("+")
+   ```
+   :::
 
 1. Create a list of all the replacement functions found in the base package. 
    Which ones are primitive functions? (Hint: use `apropos()`.)
+   
+   ::: answer
+   `apropos()` returns a vector with the names of the objects in the search list matching a regular expression.
+   
+   ```{r}
+   apropos("<-$", mode = "function")
+   ```
+   
+   I will not use it because it returns _all_ elements in the search list, and not only those that belong to the base package. Instead, I will use our earlier approach of `ls()`.
+   
+   ```{r}
+   (rfuns <- ls("package:base", pattern = "<-$"))
+   
+   robjs <- mget(rfuns, baseenv())
+   prims <- Filter(is.primitive, robjs)
+   names(prims)
+   ```
+   
+   (NB: `baseenv()` is the environment of the base package.)
+   :::
 
 1. What are valid names for user-created infix functions?
 
+   ::: answer
+   As mentioned earlier, they can contain any sequence of characters except for `%`
+   ```{r, eval = FALSE}
+   `%%%` <- function(x, y) paste0(x, y)
+   "x" %%% "y"
+   #> Error: unexpected input in ""x" %%% "y""
+   ```
+   :::
+
 1. Create an infix `xor()` operator.
+
+   ::: answer
+   ```{r}
+   `%xor%` <- function(x, y) xor(x, y)
+   
+   TRUE %xor% FALSE
+   FALSE %xor% TRUE
+   TRUE %xor% TRUE
+   FALSE %xor% FALSE
+   ```
+   :::
 
 1. Create infix versions of the set functions `intersect()`, `union()`, and
    `setdiff()`. You might call them `%n%`, `%u%`, and `%/%` to match 
    conventions from mathematics.
+   
+   ::: answer
+   ```{r}
+   `%n%` <- function(x, y) {
+     intersect(x, y)
+   }
+   `%u%` <- function(x, y) {
+     union(x, y)
+   }
+   `%/%` <- function(x, y) {
+     setdiff(x, y)
+   }
+   
+   x <- letters[1:3]
+   y <- letters[3:5]
+   
+   x %n% y
+   x %u% y
+   x %/% y
+   ```
+   :::
 
 
 ## Quiz answers {#function-answers}
