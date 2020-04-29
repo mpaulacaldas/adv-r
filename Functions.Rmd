@@ -1404,6 +1404,18 @@ j09 <- function() {
 j09()
 ```
 
+::: answer
+`r emo::ji("open_book")` __Further reading__
+
+I really liked the [self-cleaning test fixtures](https://www.tidyverse.org/blog/2020/04/self-cleaning-test-fixtures/) blog post, by Jenny Bryan. Below are my main takeaways:
+
+- `withr::defer()` can be used to wrap `on.exit()`. It is equivalent to `on.exit(.., add = TRUE, after = FALSE)`.
+- `withr::local_*()` replaces a lot of common use cases for `on.exit()`/`defer()`.
+- Custom `local_*()` helpers make writing package tests easier.
+- Unlike `on.exit()`, `defer()` works on the global environment. This is __not__ because it should be used in the global environment, but because it makes it easier to do interactive development of functions and tests.
+
+:::
+
 ### Exercises
 
 1.  What does `load()` return? Why don't you normally see these values?
