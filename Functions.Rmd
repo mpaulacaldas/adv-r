@@ -1536,7 +1536,7 @@ I really liked the [self-cleaning test fixtures](https://www.tidyverse.org/blog/
     }
     ```
     
-    Unlike what the [solutions manual](https://advanced-r-solutions.rbind.io/functions.html#exiting-a-function) states, `capture.output()` does not reimplement the `readLines()` method. If `file = NULL`, `capture.output()` writes the output to a variable called `rval`. After the output of the expressions have been evaluated, `capture.output()` returns `rval`, which is why we can see the output in the console. Note that if we were to explicitly provide a file path where to store the output, then `capture.output()` will return an invisible `NULL`.
+    Unlike what the [solutions manual](https://advanced-r-solutions.rbind.io/functions.html#exiting-a-function) says, I don't think `capture.output()` reimplements the `readLines()` method. If `file = NULL`, `capture.output()` writes the output to a variable called `rval`. After the output of the expressions have been evaluated, `capture.output()` returns `rval`, which is why we can see the output in the console. Note that if we were to explicitly provide a file path where to store the output, then `capture.output()` will return an invisible `NULL`.
         
     ```{r}
     capture.output(1+1)
