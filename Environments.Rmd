@@ -16,15 +16,71 @@ If you can answer the following questions correctly, you already know the most i
 
 1.  List at least three ways that an environment differs from a list.
 
+    ::: answer
+    - Every object in an environment must have a name, and that name must be unique.
+    - Order doesn't matter: we can't use index subsetting to extract elements of an environment.
+    - Environments have parents.
+    - Environments are modified in place (i.e. they have reference semantics).
+    :::
+
 1.  What is the parent of the global environment? What is the only 
     environment that doesn't have a parent?
     
+    ::: answer
+    The ancestors of the global environment include every attached package and the empty environment.
+    ```{r}
+    rlang::env_parents(global_env(), last = empty_env())
+    ```
+    
+    The only environment that doesn't have a parent is the empty environment.
+    :::
+    
 1.  What is the enclosing environment of a function? Why is it 
     important?
+    
+    ::: answer
+    The __enclosing__ environment of a function is the environment where it was created. It determines where a function looks for variables. This is explained in Section \@ref(function-environments), although there it is referred to as the __function__ environment. We can get the this environment with `fn_env()`.
+    
+    The enclosing environment is different from the __execution__ and the __calling__ environment. The execution environment stores the variables created during execution. Every execution environment is associated with a calling environment which gives information about where the function was called.
+    
+    ```{r}
+    inner <- function() {
+      list(
+        caller_env = rlang::caller_env(),
+        exec_env   = rlang::current_env()
+      )
+    }
+    outer <- function() {
+      list(
+        outer = list(
+          caller_env = rlang::caller_env(),
+          exec_env   = rlang::current_env()
+        ),
+        inner = inner()
+        )
+    }
+    
+    # When called inside of outer(), the caller environment of inner() is the
+    # execution environment of outer()
+    outer()
+    ```
+    
+    When bound to a name, functions also have what is called a __binding__ environment. Generally, the enclosing and the binding environments are the same, unless we assign a function into a different environment.
+    
+    For a more complete explanation, refer to the [first edition](http://adv-r.had.co.nz/Environments.html#function-envs).
+    :::
 
 1.  How do you determine the environment from which a function was called?
+    
+    ::: answer
+    You can use `rlang::caller_env()` or `parent.frame()`.
+    :::
 
 1.  How are `<-` and `<<-` different?
+
+    ::: answer
+    When used inside a function, `<<-` modifies an existing variable in the parent environment. If it doesn't find one, it will create one in the global environment.
+    :::
 
 ### Outline {-}
 
@@ -294,6 +350,10 @@ Unbinding a name doesn't delete the object. That's the job of the garbage collec
 See `get()`, `assign()`, `exists()`, and `rm()`. These are designed interactively for use with the current environment, so working with other environments is a little clunky. Also beware the `inherits` argument: it defaults to `TRUE` meaning that the base equivalents will inspect the supplied environment and all its ancestors.
 :::
 
+::: answer
+`inherits` defaults to `TRUE` only for `get()` and `exists()`.
+:::
+
 ### Advanced bindings
 \index{bindings!delayed} 
 \index{promises} 
@@ -338,25 +398,103 @@ See  `?delayedAssign()` and `?makeActiveBinding()`.
 ### Exercises
 
 1.  List three ways in which an environment differs from a list.
+    
+    ::: answer
+    - Every object in an environment must have a unique name.
+      ```{r, error = TRUE}
+      ldup <- list(a = 1, b = 2, a = 3)
+      str(ldup)
+      
+      edup <- env(a = 1, b = 2, a = 3)
+      ```
+    - The names in an environment are not ordered. This means that elements can only be accessed by their names.
+      ```{r, error = TRUE}
+      ldup[["b"]]
+      ldup[[2]]
+      
+      e1[["b"]]
+      e1[[2]]
+      ```
+    - Environments are not copied when modified.
+      ```{r, error = TRUE}
+      tracemem(ldup)
+      ldup[["b"]] <- 20
+      untracemem(ldup)
+      
+      tracemem(e1)
+      ```
+    :::
 
 1.  Create an environment as illustrated by this picture.
 
     ```{r, echo = FALSE, out.width = NULL}
     knitr::include_graphics("diagrams/environments/recursive-1.png")
     ```
+    
+    ::: answer
+    ```{r}
+    el <- env()
+    el$loop <- el
+    
+    env_print(el)
+    ```
+    :::
 
 1.  Create a pair of environments as illustrated by this picture.
 
     ```{r, echo = FALSE, out.width = NULL}
     knitr::include_graphics("diagrams/environments/recursive-2.png")
     ```
+    
+    ::: answer
+    ```{r}
+    el <- env()
+    ed <- env(deloop = el)
+    el$loop <- ed
+    
+    identical(ed, el$loop)
+    identical(el, ed$deloop)
+    ```
+    :::
 
 1.  Explain why `e[[1]]` and `e[c("a", "b")]` don't make sense when `e` is
     an environment.
+    
+    ::: answer
+    The names of an environment are not ordered, so it makes no sense to subset by an index.
+    
+    The second option makes no sense because we would be asking R to return two elements at the same time. If we want to extract more than one element from an environment, we need to think about the type of object that will contain both elements. One way is to extract the elements into a named list. This can be done with `env_get_list()` or base R `mget()`.
+    
+    ```{r}
+    env_get_list(e1, c("a", "b"))
+    mget(c("a", "b"), envir = e1)
+    ```
+    :::
 
 1.  Create a version of `env_poke()` that will only bind new names, never 
     re-bind old names. Some programming languages only do this, and are known 
     as [single assignment languages][single assignment].
+    
+    ::: answer
+    ```{r, error = TRUE}
+    env_poke2 <- function(env, nm, value) {
+      if (nm %in% names(env)) stop("Name binding already exists.")
+      env[[nm]] <- value
+    }
+    
+    ep <- env(a = 1:5, b = TRUE, c = "cat")
+    
+    env_poke2(ep, "d", Sys.Date())
+    env_print(ep)
+    
+    env_poke2(ep, "b", FALSE)
+    ```
+    
+    `r emo::ji("sparkles")` __Protips__ `r emo::ji("sparkles")`
+    
+    - The condition `nm %in% names(env)` could be replaced with `env_has(env, nm)`.
+    - Setting `call. = FALSE` in `stop()` would have removed the function call from the error message.
+    :::
 
 1.  What does this function do? How does it differ from `<<-` and why
     might you prefer it?
@@ -376,6 +514,32 @@ See  `?delayedAssign()` and `?makeActiveBinding()`.
     rebind("a", 10)
     a
     ```
+    
+    ::: answer
+    `rebind()` will only carry out an assignment if it finds an existing binding either in the current environment, or in the parent environment. Unlike `<<-`, it will never create a new one in the global environment.
+    ```{r, error = TRUE}
+    foo <- function() {
+      bar <<- "margarita"
+    }
+    foo2 <- function() {
+      rebind("bar", "margarita")
+    }
+    
+    if ("bar" %in% ls()) rm(bar)
+    
+    foo()
+    bar
+    
+    rm(bar)
+    foo2()
+    
+    bar <- "mojito"
+    foo2()
+    bar
+    ```
+    
+    As stated before, this behaviour is usually undesirable because global variables introduce non-obvious dependencies between functions.
+    :::
 
 ## Recursing over environments {#env-recursion}
 \index{recursion!over environments}
@@ -480,6 +644,34 @@ f2 <- function(..., env = caller_env()) {
 1.  Modify `where()` to return _all_ environments that contain a binding for
     `name`. Carefully think through what type of object the function will
     need to return.
+    
+    ::: answer
+    ```{r, error = TRUE}
+    # Using iteration
+    where2 <- function(name, env = caller_env()) {
+      while (!identical(env, empty_env())) {
+        if (env_has(env, name)) print(env)
+        env <- env_parent(env)
+      }
+      return(invisible(NULL))
+    }
+    
+    where2("a", e4a)
+    where2("a", e4b)
+    where2("y", e4a)
+    
+    # Using recursion
+    where3 <- function(name, env = caller_env()) {
+      if (identical(env, empty_env())) return(invisible(NULL))
+      if (env_has(env, name)) print(env)
+      where3(name, env_parent(env))
+    }
+    
+    where3("a", e4a)
+    where3("a", e4b)
+    where3("y", e4a)
+    ```
+    :::
 
 1.  Write a function called `fget()` that finds only function objects. It 
     should have two arguments, `name` and `env`, and should obey the regular 
@@ -487,6 +679,25 @@ f2 <- function(..., env = caller_env()) {
     that's not a function, look in the parent. For an added challenge, also 
     add an `inherits` argument which controls whether the function recurses up 
     the parents or only looks in one environment.
+    
+    ::: answer
+    This is relatively simple to implement because both `exists()` and `get()` behave recursively depending on the value of the `inherits` parameter.
+    ```{r, error = TRUE}
+    fget <- function (name, env = caller_env(), inherits = FALSE) {
+      if (!exists(name, envir = env, mode = "function", inherits = inherits)) {
+        stop("Can't find '", name,"' function.", call. = FALSE)
+      } 
+      get(name, envir = env, inherits = inherits)
+    }
+    
+    ef1 <- env(empty_env(), square = function(x) x ^ 2, y = 20)
+    ef2 <- env(ef1, x = 10)
+    
+    fget("square", ef1)
+    fget("square", ef2)
+    fget("square", ef2, inherits = TRUE)
+    ```
+    :::
 
 ## Special environments {#special-environments}
  
@@ -564,6 +775,12 @@ e$g <- function() 1
 ```{r, echo = FALSE, out.width = NULL}
 knitr::include_graphics("diagrams/environments/binding-2.png")
 ```
+
+::: answer
+`r emo::ji("speech_balloon")` __In my own words__
+
+`g()` is the function, which binds the global environment. `g` is the function name, which is bound to a new environment `e`.
+:::
 
 
 ### Namespaces
@@ -696,6 +913,20 @@ plus_one
 knitr::include_graphics("diagrams/environments/closure.png")
 ```
 
+::: answer
+__From top to bottom__
+
+1. `plus()` creates `x` in its execution environment, which becomes the enclosing environment of `plus_one()`.
+1. `plus()` gets `x` from its execution environment, `plus_one()` looks for `x` in its enclosing environment.
+1. The function names `plus_one` and `plus` are bound to the global environment. The `plus()` function binds the global environment, `plus_one()` binds the execution environment of `plus()`.
+:::
+
+::: answer
+__Q:__ In the graph, why does `plus_one()` take `y` as an argument?
+
+__A:__ `plus()` returns a _function_ with only one argument, `y`. Therefore, calling `plus(1)` returns `function(y) 1 + y`.
+:::
+
 What happens when we call `plus_one()`? Its execution environment will have the captured execution environment of `plus()` as its parent:
 
 ```{r}
@@ -708,9 +939,26 @@ knitr::include_graphics("diagrams/environments/closure-call.png")
 
 You'll learn more about function factories in Section \@ref(factory-fundamentals).
 
+::: answer
+By definition, `plus_one(2)` is equivalent to
+
+```{r}
+plus(1)(2)
+```
+:::
+
 ### Exercises
 
 1.  How is `search_envs()` different from `env_parents(global_env())`?
+    
+    ::: answer
+    `search_envs()` returns the chain of environments containing exported functions or attached packages, i.e. the environments on the search path. It includes the global environment and excludes the empty environment. The global environment is included because it contains objects that are visible from the global workspace. The empty environment is excluded because it contains no objects.
+    ```{r}
+    search_envs()
+    
+    env_parents(global_env())
+    ```
+    :::
 
 1.  Draw a diagram that shows the enclosing environments of this function:
     
@@ -726,10 +974,48 @@ You'll learn more about function factories in Section \@ref(factory-fundamentals
     }
     f1(1)
     ```
+    
+    <!-- TODO: Add photo of diagram -->
 
 1.  Write an enhanced version of `str()` that provides more information 
     about functions. Show where the function was found and what environment 
     it was defined in.
+    
+    ::: answer
+    I can't take advantage of the `fget()` function that I defined previously because I rely on the `inherits` parameter of `get()`, which does not give information on the environment where the function was found.
+    
+    I will there follow a similar approach to what is done the [solutions manual](https://advanced-r-solutions.rbind.io/environments.html#special-environments).
+    
+    ```{r}
+    fstr <- function(name, env = caller_env()) {
+      # Stop at the empty environment
+      if (identical(env, empty_env())) {
+        stop("Can't find ", name, call. = FALSE)
+      # Return early if the environment has a function with that name
+      } else if (env_has(env, name)) {
+        obj <- env_get(env, name)
+        if (is.function(obj)) {
+          out <- list(
+            found_at = env_name(env), 
+            defined_in = env_name(fn_env(obj))
+            )
+          return(out)
+        }
+      # If not, try again in the parent environment
+      } else {
+        fstr(name, env_parent(env))
+      }
+    }
+    
+    fstr("mean")
+    ```
+    
+    Note that base R's `getAnywhere()` also returns the same information.
+    
+    ```{r, error = TRUE}
+    getAnywhere("mean")
+    ```
+    :::
 
 ## Call stacks {#call-stack}
 \index{environments!calling}
@@ -854,6 +1140,19 @@ Looking up variables in the calling stack rather than in the enclosing environme
 
 1.  Write a function that lists all the variables defined in the environment
     in which it was called. It should return the same results as `ls()`.
+    
+    ::: answer
+    ```{r}
+    fls <- function() ls(name = caller_env())
+    
+    # Evaluated in the global environment
+    fls()
+    
+    # Evaluated in a new environment
+    els <- env(a = "apple", b = 1:3)
+    exec(fls, .env = els)
+    ```
+    :::
 
 ## As data structures {#explicit-envs}
 \index{hashmaps} 
@@ -913,3 +1212,9 @@ As well as powering scoping, environments are also useful data structures in the
     rebinds an existing name in a parent of the current environment.
 
 [single assignment]:http://en.wikipedia.org/wiki/Assignment_(computer_science)#Single_assignment
+
+::: answer
+`r emo::ji("open_book")` __Further reading__
+
+At one point I had gone through the [RStudio Primers](https://rstudio.cloud/learn/primers/6) and remember liking them quite a bit. I think it covered some information on environments, but I need to go through my notes. The source code for the primers can be found at <https://github.com/rstudio-education/primers>.
+:::
